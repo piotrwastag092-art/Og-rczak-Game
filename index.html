@@ -192,24 +192,32 @@ function init(){
     scene.background = new THREE.Color(0x87CEEB);
     scene.fog = new THREE.FogExp2(0x87CEEB, 0.0075);
 
-    camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 300);
-    renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:"high-performance"});
+    camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 320);
+    renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:"high-performance", precision:"highp"});
     renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); // bliżej 4K na ekranach HiDPI
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
     document.body.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.42));
-    sunLight = new THREE.DirectionalLight(0xfff5e0, 1.05);
-    sunLight.position.set(50,70,30);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.38));
+    sunLight = new THREE.DirectionalLight(0xfff8e8, 1.25);
+    sunLight.position.set(55,75,35);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(2048,2048);
-    sunLight.shadow.camera.near=10; sunLight.shadow.camera.far=180;
-    sunLight.shadow.camera.left=-80; sunLight.shadow.camera.right=80;
-    sunLight.shadow.camera.top=80; sunLight.shadow.camera.bottom=-80;
+    sunLight.shadow.mapSize.set(4096,4096); // wyższa rozdzielczość cieni
+    sunLight.shadow.camera.near=8; sunLight.shadow.camera.far=200;
+    sunLight.shadow.camera.left=-90; sunLight.shadow.camera.right=90;
+    sunLight.shadow.camera.top=90; sunLight.shadow.camera.bottom=-90;
+    sunLight.shadow.bias = -0.0002;
     scene.add(sunLight);
-    scene.add(new THREE.HemisphereLight(0x87CEEB, 0x3a5a2a, 0.3));
+    scene.add(new THREE.HemisphereLight(0x87CEEB, 0x3a5a2a, 0.35));
+    // delikatne wypełniające światło z przodu
+    const fill = new THREE.DirectionalLight(0xaaccff, 0.25);
+    fill.position.set(-30, 20, -40);
+    scene.add(fill);
 
     generateWorld();
     createPlayerModel();
@@ -281,9 +289,12 @@ let blockMeshes={}; const materials={};
 function getMaterial(type){
     if(!materials[type]){
         const b=BLOCKS[type];
-        materials[type]=new THREE.MeshLambertMaterial({
-            color:b.color, transparent:type==='water'||type==='leaves'||type==='glass',
-            opacity:type==='water'?0.6:(type==='leaves'?0.87:(type==='glass'?0.4:1))
+        materials[type]=new THREE.MeshStandardMaterial({
+            color:b.color,
+            roughness: type==='water' ? 0.1 : (type==='glass' ? 0.05 : 0.85),
+            metalness: type==='glass' ? 0.3 : 0.02,
+            transparent: type==='water'||type==='leaves'||type==='glass',
+            opacity: type==='water'?0.55:(type==='leaves'?0.85:(type==='glass'?0.35:1))
         });
     }
     return materials[type];
@@ -316,46 +327,56 @@ function rebuildMeshes(){
 function createPlayerModel(){
     playerMesh = new THREE.Group();
 
-    // ciało
-    const bodyMat = new THREE.MeshLambertMaterial({color:0x6b8e23});
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.2, 1.1), bodyMat);
-    body.position.y = 1.3;
+    // Lepsze materiały (Standard = ładniejsze oświetlenie i cienie)
+    const bodyMat = new THREE.MeshStandardMaterial({color:0x6b8e23, roughness:0.7, metalness:0.05});
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.15, 2.25, 1.15), bodyMat);
+    body.position.y = 1.35;
     body.castShadow = true;
+    body.receiveShadow = true;
     playerMesh.add(body);
 
     // głowa
-    const head = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.3, 1.3), bodyMat);
-    head.position.y = 2.85;
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1.35, 1.35, 1.35), bodyMat);
+    head.position.y = 2.95;
     head.castShadow = true;
     playerMesh.add(head);
 
-    // oczy
-    const eyeMat = new THREE.MeshLambertMaterial({color:0x111111});
-    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.1), eyeMat);
-    eyeL.position.set(-0.32, 3.0, 0.65);
+    // oczy (przód = +Z)
+    const eyeMat = new THREE.MeshStandardMaterial({color:0x111111, roughness:0.3});
+    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.24, 0.12), eyeMat);
+    eyeL.position.set(-0.34, 3.1, 0.68);
     playerMesh.add(eyeL);
-    const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.1), eyeMat);
-    eyeR.position.set(0.32, 3.0, 0.65);
+    const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.24, 0.12), eyeMat);
+    eyeR.position.set(0.34, 3.1, 0.68);
     playerMesh.add(eyeR);
 
-    // dziób
-    const beak = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.45, 0.65), new THREE.MeshLambertMaterial({color:0xd4a017}));
-    beak.position.set(0, 2.65, 0.85);
+    // dziób (przód)
+    const beak = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.48, 0.7), new THREE.MeshStandardMaterial({color:0xe8b020, roughness:0.5}));
+    beak.position.set(0, 2.72, 0.9);
+    beak.castShadow = true;
     playerMesh.add(beak);
 
     // język
-    const tongue = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.55, 0.12), new THREE.MeshLambertMaterial({color:0xcc2222}));
-    tongue.position.set(0, 2.25, 1.05);
+    const tongue = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.58, 0.14), new THREE.MeshStandardMaterial({color:0xdd2222, roughness:0.6}));
+    tongue.position.set(0, 2.3, 1.12);
     playerMesh.add(tongue);
 
     // antenki
-    const antMat = new THREE.MeshLambertMaterial({color:0x90ee90});
-    const ant1 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.75, 0.14), antMat);
-    ant1.position.set(-0.28, 3.7, 0);
+    const antMat = new THREE.MeshStandardMaterial({color:0xa0f0a0, roughness:0.4, emissive:0x204020, emissiveIntensity:0.15});
+    const ant1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.15), antMat);
+    ant1.position.set(-0.3, 3.85, 0);
     playerMesh.add(ant1);
-    const ant2 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.85, 0.14), antMat);
-    ant2.position.set(0.28, 3.75, 0);
+    const ant2 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.9, 0.15), antMat);
+    ant2.position.set(0.3, 3.9, 0);
     playerMesh.add(ant2);
+
+    // małe detale na ciele (paski jak w oryginale)
+    const stripeMat = new THREE.MeshStandardMaterial({color:0x5a7a1a, roughness:0.8});
+    for(let i=0;i<3;i++){
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.16, 0.12, 1.16), stripeMat);
+        stripe.position.y = 0.7 + i*0.55;
+        playerMesh.add(stripe);
+    }
 
     scene.add(playerMesh);
 }
@@ -547,19 +568,25 @@ function updatePlayer(dt){
         player.onGround = false;
     }
 
-    // aktualizuj widoczny model
+    // aktualizuj widoczny model – dziób (przód) idzie w kierunku ruchu
     playerMesh.position.set(player.x, player.y, player.z);
-    playerMesh.rotation.y = player.yaw;
+    playerMesh.rotation.y = player.yaw + Math.PI;
 
-    // kamera trzeciej osoby – za i nad postacią
-    const camDist = 7.5;
-    const camHeight = 4.5;
+    // lekkie bujanie przy chodzeniu
+    const moving = Math.hypot(player.vx, player.vz) > 0.5;
+    if(moving){
+        playerMesh.position.y += Math.sin(performance.now() * 0.012) * 0.08;
+    }
+
+    // kamera trzeciej osoby – za postacią (przeciwna strona do dzioba)
+    const camDist = 8.0;
+    const camHeight = 4.8;
     const camX = player.x + Math.sin(player.yaw) * camDist;
     const camZ = player.z + Math.cos(player.yaw) * camDist;
-    const camY = player.y + camHeight + Math.sin(player.pitch) * 2;
+    const camY = player.y + camHeight + Math.sin(player.pitch) * 2.2;
 
-    camera.position.lerp(new THREE.Vector3(camX, camY, camZ), 0.15);
-    camera.lookAt(player.x, player.y + 2.2, player.z);
+    camera.position.lerp(new THREE.Vector3(camX, camY, camZ), 0.12);
+    camera.lookAt(player.x, player.y + 2.4, player.z);
 
     document.getElementById('pos').textContent = `${player.x.toFixed(0)}, ${player.z.toFixed(0)}`;
     document.getElementById('score').textContent = score;
@@ -842,30 +869,52 @@ function animate(){
         if(a.vx||a.vz) a.mesh.rotation.y=Math.atan2(a.vx,a.vz);
     });
 
-    // losowe wydarzenia
+    // losowe wydarzenia – częściej
     eventTimer -= dt;
     if(eventTimer <= 0){
-        eventTimer = 25 + Math.random()*40;
+        eventTimer = 18 + Math.random()*30;
         const ev = EVENTS[Math.floor(Math.random()*EVENTS.length)];
         showEvent(ev);
         // czasem dodaj ogórki na farmie
-        if(Math.random()>0.5){
-            for(let i=0;i<3;i++){
+        if(Math.random()>0.4){
+            for(let i=0;i<4;i++){
                 const fx = 5 + Math.floor(Math.random()*10);
                 const fz = 4 + Math.floor(Math.random()*9);
                 setBlock(fx, getHeight(fx,fz)+1, fz, 'cucumber');
             }
             rebuildMeshes();
         }
+        // czasem NPC idą bliżej gracza
+        if(Math.random()>0.6){
+            npcs.forEach(npc=>{
+                npc.targetX = player.x + (Math.random()-0.5)*8;
+                npc.targetZ = player.z + (Math.random()-0.5)*8;
+                npc.walkTimer = 4;
+            });
+        }
     }
 
-    // lekkie kołysanie antenek Ogórczaka
+    // animacje Ogórczaka – antenki + lekkie oddychanie
     if(playerMesh){
-        const t = performance.now() * 0.003;
+        const t = performance.now() * 0.004;
+        // antenki (ostatnie dwa dzieci przed paskami? – szukamy po pozycji)
         playerMesh.children.forEach((c,i)=>{
-            if(i >= 6) c.rotation.z = Math.sin(t + i)*0.15;
+            if(c.geometry && c.geometry.parameters && c.geometry.parameters.height > 0.7 && c.geometry.parameters.width < 0.2){
+                c.rotation.z = Math.sin(t + i*1.3) * 0.22;
+                c.rotation.x = Math.cos(t*0.8 + i) * 0.08;
+            }
         });
+        // lekkie "oddychanie" ciała
+        const breath = 1 + Math.sin(t*0.7) * 0.015;
+        playerMesh.scale.set(breath, 1 + Math.sin(t*0.7)*0.01, breath);
     }
+
+    // kurczaki czasem podskakują
+    animals.forEach(a=>{
+        if(Math.random() < 0.002){
+            a.mesh.position.y += 0.4;
+        }
+    });
 
     if(dialogTimer>0){dialogTimer-=dt;if(dialogTimer<=0) document.getElementById('dialog').style.display='none'}
 
