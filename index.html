@@ -3,848 +3,878 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ogórczak: Symulator Ogórkowego Chaosu</title>
+<title>Ogórczak Simulator</title>
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;500;700&display=swap');
-    
-    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-    body { overflow: hidden; background: #000; font-family: 'Roboto', sans-serif; }
-    
-    #loading {
-        position: fixed; inset: 0; background: #0a1a0a; display: flex; flex-direction: column;
-        align-items: center; justify-content: center; z-index: 1000; color: #8f8;
-        font-family: 'Press Start 2P', monospace;
-    }
-    #loading h1 { font-size: 22px; margin-bottom: 30px; text-align: center; line-height: 1.6; }
-    #loading-bar { width: 320px; height: 18px; background: #1a3a1a; border: 3px solid #4a4; border-radius: 4px; overflow: hidden; }
-    #loading-progress { height: 100%; width: 0%; background: linear-gradient(90deg, #4a4, #8f8); transition: width 0.3s; }
-    #loading-text { margin-top: 18px; font-size: 11px; opacity: 0.8; }
-
-    #ui { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
-    
-    #top-left {
-        position: absolute; top: 18px; left: 18px; color: white;
-        text-shadow: 2px 2px 0 #000; font-size: 13px; line-height: 1.5;
-    }
-    #top-left h1 { font-family: 'Press Start 2P', monospace; font-size: 14px; margin-bottom: 8px; color: #9f9; }
-    
-    #hotbar {
-        position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
-        display: flex; gap: 4px; background: rgba(0,0,0,0.55); padding: 6px; border-radius: 8px;
-        border: 2px solid rgba(255,255,255,0.15);
-    }
-    .slot {
-        width: 52px; height: 52px; background: rgba(30,30,30,0.85);
-        border: 2px solid #555; border-radius: 6px; display: flex; align-items: center; justify-content: center;
-        position: relative; font-size: 22px;
-    }
-    .slot.active { border-color: #fff; box-shadow: 0 0 0 2px #4a4; }
-    .slot .count { position: absolute; bottom: 2px; right: 4px; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 1px 1px 0 #000; }
-    
-    #crosshair {
-        position: absolute; top: 50%; left: 50%; width: 22px; height: 22px;
-        transform: translate(-50%, -50%); pointer-events: none;
-    }
-    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255,255,255,0.85); }
-    #crosshair::before { width: 2px; height: 22px; left: 10px; }
-    #crosshair::after { width: 22px; height: 2px; top: 10px; }
-    
-    #dialog {
-        position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
-        background: rgba(10,20,10,0.92); color: #e8ffe8; padding: 18px 28px;
-        border-radius: 12px; font-size: 16px; max-width: 640px; text-align: center;
-        border: 3px solid #4a8a4a; display: none; line-height: 1.5;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-    }
-    #dialog .speaker { font-weight: 700; color: #9f9; margin-bottom: 6px; font-size: 14px; }
-    
-    #quest-log {
-        position: absolute; top: 18px; right: 18px; width: 280px;
-        background: rgba(0,0,0,0.7); border: 2px solid #4a4; border-radius: 10px;
-        padding: 14px; color: #dfd; font-size: 13px; display: none;
-    }
-    #quest-log h3 { font-family: 'Press Start 2P', monospace; font-size: 11px; margin-bottom: 10px; color: #8f8; }
-    #quest-log .quest { margin-bottom: 8px; padding-left: 8px; border-left: 3px solid #4a4; }
-    #quest-log .done { opacity: 0.5; text-decoration: line-through; }
-    
-    #health-bar, #hunger-bar {
-        position: absolute; bottom: 90px; height: 14px; border-radius: 4px;
-        border: 2px solid #222; overflow: hidden;
-    }
-    #health-bar { left: 24px; width: 160px; background: #333; }
-    #hunger-bar { right: 24px; width: 160px; background: #333; }
-    #health-fill { height: 100%; background: linear-gradient(90deg, #c33, #f55); width: 100%; transition: width 0.3s; }
-    #hunger-fill { height: 100%; background: linear-gradient(90deg, #a62, #fa3); width: 100%; transition: width 0.3s; }
-    
-    #info {
-        position: absolute; bottom: 18px; left: 18px; color: rgba(255,255,255,0.7);
-        font-size: 12px; text-shadow: 1px 1px 0 #000;
-    }
-    
-    #menu {
-        position: fixed; inset: 0; background: rgba(0,15,0,0.92); display: flex;
-        flex-direction: column; align-items: center; justify-content: center; z-index: 200;
-        color: white; font-family: 'Press Start 2P', monospace;
-    }
-    #menu h1 { font-size: 28px; margin-bottom: 12px; color: #8f8; text-align: center; line-height: 1.5; }
-    #menu p { font-size: 12px; opacity: 0.8; margin-bottom: 40px; text-align: center; max-width: 500px; line-height: 1.7; }
-    .btn {
-        background: #2a5a2a; border: 3px solid #4a8a4a; color: white; padding: 16px 42px;
-        font-family: 'Press Start 2P', monospace; font-size: 14px; cursor: pointer;
-        border-radius: 8px; margin: 8px; transition: all 0.2s; pointer-events: auto;
-    }
-    .btn:hover { background: #3a7a3a; transform: scale(1.05); }
-    
-    #controls-help {
-        position: absolute; bottom: 18px; right: 18px; background: rgba(0,0,0,0.65);
-        padding: 12px 16px; border-radius: 8px; font-size: 12px; color: #ccc; line-height: 1.6;
-        border: 1px solid #444;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;500;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;user-select:none}
+body{overflow:hidden;background:#000;font-family:'Roboto',sans-serif}
+#loading{position:fixed;inset:0;background:#0a1a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;color:#8f8;font-family:'Press Start 2P',monospace}
+#loading h1{font-size:28px;margin-bottom:8px;color:#9f9;text-align:center;line-height:1.4}
+#loading h2{font-size:11px;margin-bottom:28px;opacity:.7;text-align:center}
+#loading-bar{width:360px;height:18px;background:#1a3a1a;border:3px solid #4a4;border-radius:4px;overflow:hidden}
+#loading-progress{height:100%;width:0%;background:linear-gradient(90deg,#4a4,#8f8);transition:width .2s}
+#loading-text{margin-top:16px;font-size:11px;opacity:.8}
+#ui{position:absolute;inset:0;pointer-events:none;z-index:50}
+#top-left{position:absolute;top:14px;left:14px;color:#fff;text-shadow:2px 2px 0 #000;font-size:12px;line-height:1.45}
+#top-left h1{font-family:'Press Start 2P',monospace;font-size:14px;margin-bottom:6px;color:#9f9}
+#hotbar{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:3px;background:rgba(0,0,0,.6);padding:5px;border-radius:8px;border:2px solid rgba(255,255,255,.12)}
+.slot{width:48px;height:48px;background:rgba(25,25,25,.9);border:2px solid #555;border-radius:5px;display:flex;align-items:center;justify-content:center;position:relative;font-size:20px}
+.slot.active{border-color:#fff;box-shadow:0 0 0 2px #5a5}
+.slot .count{position:absolute;bottom:1px;right:3px;font-size:11px;font-weight:700;color:#fff;text-shadow:1px 1px 0 #000}
+#crosshair{position:absolute;top:50%;left:50%;width:18px;height:18px;transform:translate(-50%,-50%);pointer-events:none;opacity:.5}
+#crosshair::before,#crosshair::after{content:'';position:absolute;background:rgba(255,255,255,.7)}
+#crosshair::before{width:2px;height:18px;left:8px}
+#crosshair::after{width:18px;height:2px;top:8px}
+#dialog{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(8,18,8,.94);color:#e8ffe8;padding:14px 24px;border-radius:11px;font-size:14px;max-width:600px;text-align:center;border:3px solid #4a8a4a;display:none;line-height:1.4;box-shadow:0 8px 28px rgba(0,0,0,.55)}
+#dialog .speaker{font-weight:700;color:#9f9;margin-bottom:4px;font-size:12px}
+#quest-log{position:absolute;top:14px;right:14px;width:280px;background:rgba(0,0,0,.78);border:2px solid #4a4;border-radius:9px;padding:12px;color:#dfd;font-size:12px;display:none}
+#quest-log h3{font-family:'Press Start 2P',monospace;font-size:10px;margin-bottom:8px;color:#8f8}
+#quest-log .quest{margin-bottom:6px;padding-left:7px;border-left:3px solid #4a4}
+#quest-log .done{opacity:.4;text-decoration:line-through}
+#health-bar,#hunger-bar{position:absolute;bottom:80px;height:12px;border-radius:3px;border:2px solid #222;overflow:hidden}
+#health-bar{left:16px;width:140px;background:#333}
+#hunger-bar{right:16px;width:140px;background:#333}
+#health-fill{height:100%;background:linear-gradient(90deg,#c33,#f55);width:100%;transition:width .3s}
+#hunger-fill{height:100%;background:linear-gradient(90deg,#a62,#fa3);width:100%;transition:width .3s}
+#info{position:absolute;bottom:14px;left:14px;color:rgba(255,255,255,.6);font-size:11px;text-shadow:1px 1px 0 #000}
+#menu{position:fixed;inset:0;background:rgba(0,12,0,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;color:#fff;font-family:'Press Start 2P',monospace}
+#menu h1{font-size:30px;margin-bottom:8px;color:#8f8;text-align:center}
+#menu .subtitle{font-size:11px;opacity:.75;margin-bottom:24px;text-align:center;max-width:520px;line-height:1.7}
+.btn{background:#2a5a2a;border:3px solid #4a8a4a;color:#fff;padding:13px 32px;font-family:'Press Start 2P',monospace;font-size:12px;cursor:pointer;border-radius:7px;margin:6px;transition:all .2s;pointer-events:auto}
+.btn:hover{background:#3a7a3a;transform:scale(1.04)}
+#controls-help{position:absolute;bottom:14px;right:14px;background:rgba(0,0,0,.7);padding:10px 12px;border-radius:7px;font-size:10px;color:#ccc;line-height:1.5;border:1px solid #444}
+#craft-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,20,10,.96);border:3px solid #4a8a4a;border-radius:11px;padding:18px;width:320px;display:none;z-index:80;pointer-events:auto;color:#dfd}
+#craft-panel h3{font-family:'Press Start 2P',monospace;font-size:11px;margin-bottom:12px;color:#8f8;text-align:center}
+.recipe{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;margin-bottom:5px;background:rgba(0,0,0,.4);border-radius:5px;cursor:pointer;border:1px solid #333}
+.recipe:hover{background:rgba(40,80,40,.5);border-color:#5a5}
+.recipe .req{font-size:11px;opacity:.8}
+#mp-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,20,10,.97);border:3px solid #4a8a4a;border-radius:12px;padding:22px;width:380px;display:none;z-index:90;pointer-events:auto;color:#dfd;text-align:center}
+#mp-panel h3{font-family:'Press Start 2P',monospace;font-size:13px;margin-bottom:14px;color:#8f8}
+#mp-panel input{width:100%;padding:10px;margin:8px 0;background:#1a2a1a;border:2px solid #4a4;color:#fff;border-radius:6px;font-size:14px;text-align:center}
+#mp-panel .small{font-size:11px;opacity:.7;margin:8px 0 14px;line-height:1.5}
+#mp-status{font-size:12px;margin-top:10px;color:#8f8}
+#players-online{position:absolute;top:70px;left:14px;background:rgba(0,0,0,.65);padding:6px 10px;border-radius:6px;font-size:11px;color:#9f9;display:none}
+#event-banner{position:absolute;top:80px;left:50%;transform:translateX(-50%);background:rgba(0,40,0,.9);color:#9f9;padding:10px 20px;border-radius:8px;font-size:13px;border:2px solid #4a4;display:none;z-index:60;text-align:center;max-width:400px}
 </style>
 </head>
 <body>
-    <div id="loading">
-        <h1>OGÓRCZAK<br>Symulator Ogórkowego Chaosu</h1>
-        <div id="loading-bar"><div id="loading-progress"></div></div>
-        <div id="loading-text">Generowanie świata...</div>
-    </div>
+<div id="loading">
+    <h1>OGÓRCZAK<br>SIMULATOR</h1>
+    <h2>Trzecia osoba • Duży świat • Dynamika</h2>
+    <div id="loading-bar"><div id="loading-progress"></div></div>
+    <div id="loading-text">Generowanie świata...</div>
+</div>
 
-    <div id="menu">
-        <h1>OGÓRCZAK</h1>
-        <p>Mega rozbudowany symulator w stylu Minecraft.<br>
-        Główną postacią jesteś Ty – Ogórczak.<br>
-        W świecie mieszka para: Marcin i jego partner.<br>
-        Pomagaj im, buduj, farmij i odkrywaj.</p>
-        <button class="btn" id="btn-start">ROZPOCZNIJ GRĘ</button>
-        <button class="btn" id="btn-continue" style="display:none">KONTYNUUJ</button>
+<div id="menu">
+    <h1>OGÓRCZAK SIMULATOR</h1>
+    <div class="subtitle">
+        Widzisz swoją postać z trzeciej osoby.<br>
+        Duży świat, chodzący NPC, zwierzęta, wydarzenia.<br>
+        Graj sam lub multiplayer na odległość.
     </div>
+    <button class="btn" id="btn-start">NOWA GRA</button>
+    <button class="btn" id="btn-continue" style="display:none">KONTYNUUJ</button>
+    <button class="btn" id="btn-mp">MULTIPLAYER</button>
+</div>
 
-    <div id="ui" style="display:none">
-        <div id="top-left">
-            <h1>OGÓRCZAK</h1>
-            <div>Dzień <span id="day">1</span> • <span id="time">Poranek</span></div>
-            <div style="margin-top:6px">Pozycja: <span id="pos">0, 0</span></div>
-        </div>
-        
-        <div id="quest-log">
-            <h3>ZADANIA</h3>
-            <div id="quests"></div>
-        </div>
-        
-        <div id="hotbar">
-            <div class="slot active" data-slot="0">🟩<span class="count">64</span></div>
-            <div class="slot" data-slot="1">🟫<span class="count">32</span></div>
-            <div class="slot" data-slot="2">⬜<span class="count">16</span></div>
-            <div class="slot" data-slot="3">🪵<span class="count">24</span></div>
-            <div class="slot" data-slot="4">🥒<span class="count">8</span></div>
-            <div class="slot" data-slot="5"></div>
-            <div class="slot" data-slot="6"></div>
-            <div class="slot" data-slot="7"></div>
-            <div class="slot" data-slot="8"></div>
-        </div>
-        
-        <div id="crosshair"></div>
-        <div id="dialog"><div class="speaker"></div><div class="text"></div></div>
-        
-        <div id="health-bar"><div id="health-fill"></div></div>
-        <div id="hunger-bar"><div id="hunger-fill"></div></div>
-        
-        <div id="info">Lewy przycisk – niszcz • Prawy – stawiaj • E – rozmowa • Q – dziennik zadań • 1-9 – wybór bloku</div>
-        
-        <div id="controls-help">
-            WASD – ruch<br>
-            Spacja – skok<br>
-            Shift – kucanie<br>
-            E – rozmowa z NPC<br>
-            Q – dziennik zadań<br>
-            Esc – pauza
-        </div>
+<div id="ui" style="display:none">
+    <div id="top-left">
+        <h1>OGÓRCZAK SIMULATOR</h1>
+        <div>Dzień <span id="day">1</span> • <span id="time">Poranek</span></div>
+        <div style="margin-top:4px">Pozycja: <span id="pos">0, 0</span></div>
+        <div style="margin-top:3px;font-size:11px;opacity:.8">Punkty: <span id="score">0</span></div>
     </div>
+    <div id="players-online">Gracze online: <span id="player-count">1</span></div>
+    <div id="event-banner"></div>
+    <div id="quest-log"><h3>ZADANIA</h3><div id="quests"></div></div>
+    <div id="hotbar">
+        <div class="slot active" data-slot="0"></div><div class="slot" data-slot="1"></div><div class="slot" data-slot="2"></div>
+        <div class="slot" data-slot="3"></div><div class="slot" data-slot="4"></div><div class="slot" data-slot="5"></div>
+        <div class="slot" data-slot="6"></div><div class="slot" data-slot="7"></div><div class="slot" data-slot="8"></div>
+    </div>
+    <div id="crosshair"></div>
+    <div id="dialog"><div class="speaker"></div><div class="text"></div></div>
+    <div id="health-bar"><div id="health-fill"></div></div>
+    <div id="hunger-bar"><div id="hunger-fill"></div></div>
+    <div id="info">LPM niszcz • PPM stawiaj • E rozmowa • C crafting • M multiplayer • Q zadania</div>
+    <div id="controls-help">WASD ruch<br>Mysz obrót kamery<br>Spacja skok<br>E rozmowa<br>C crafting<br>M multiplayer<br>Q zadania<br>Esc menu</div>
+</div>
+
+<div id="craft-panel">
+    <h3>CRAFTING</h3>
+    <div id="recipes"></div>
+    <button class="btn" style="width:100%;margin-top:10px;padding:9px;font-size:10px" id="btn-close-craft">ZAMKNIJ</button>
+</div>
+
+<div id="mp-panel">
+    <h3>MULTIPLAYER</h3>
+    <div class="small">Graj z Marcinem na odległość.<br>Jeden hostuje, drugi wpisuje kod.</div>
+    <button class="btn" id="btn-host" style="width:100%">HOSTUJ GRĘ</button>
+    <div style="margin:12px 0;font-size:12px;opacity:.7">lub</div>
+    <input id="join-code" placeholder="Wpisz kod hosta" maxlength="20">
+    <button class="btn" id="btn-join" style="width:100%">DOŁĄCZ</button>
+    <div id="mp-status"></div>
+    <button class="btn" style="width:100%;margin-top:14px;padding:9px;font-size:10px;background:#333;border-color:#666" id="btn-close-mp">ZAMKNIJ</button>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
 // =====================================================
-// OGÓRCZAK - Symulator Ogórkowego Chaosu
-// Profesjonalna wersja rozbudowana
+// OGÓRCZAK SIMULATOR - trzecia osoba + dynamika
 // =====================================================
 
-const WORLD_SIZE = 64;
-const BLOCK_SIZE = 1;
-const RENDER_DIST = 48;
+const WORLD_SIZE = 140;
 
-let scene, camera, renderer, raycaster, sunLight, hemi;
+let scene, camera, renderer, sunLight;
 let world = {};
-let player = { x: 0, y: 20, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, onGround: false, health: 100, hunger: 100 };
+let playerMesh; // widoczna postać Ogórczaka
+let player = { x:0, y:30, z:0, vx:0, vy:0, vz:0, yaw:0, pitch:0.3, onGround:false, health:100, hunger:100 };
 let inventory = [
-    { id: 'grass', count: 64 }, { id: 'dirt', count: 32 }, { id: 'stone', count: 16 },
-    { id: 'wood', count: 24 }, { id: 'cucumber', count: 8 }, null, null, null, null
+    {id:'grass',count:48},{id:'dirt',count:32},{id:'stone',count:24},
+    {id:'wood',count:30},{id:'cucumber',count:8},null,null,null,null
 ];
 let selectedSlot = 0;
 let keys = {};
 let isLocked = false;
 let clock = new THREE.Clock();
-let dayTime = 0.25;
-let dayCount = 1;
+let dayTime = 0.2, dayCount = 1, score = 0;
 let npcs = [];
-let quests = [
-    { id: 1, title: "Porozmawiaj z Marcinem", done: false },
-    { id: 2, title: "Zdobądź 10 ogórków", done: false, progress: 0, target: 10 },
-    { id: 3, title: "Zbuduj coś przy barze pary", done: false },
-    { id: 4, title: "Przetrwaj 3 dni", done: false, progress: 1, target: 3 }
-];
+let animals = [];
 let dialogTimer = 0;
+let craftOpen = false, mpOpen = false;
+let rainActive = false;
+let eventTimer = 30;
+let particles = [];
+
+// Multiplayer
+let peer = null, conn = null, isHost = false;
+let remotePlayers = {};
+
+const quests = [
+    {id:1,title:"Porozmawiaj z Marcinem",done:false},
+    {id:2,title:"Porozmawiaj z Piotrkiem",done:false},
+    {id:3,title:"Zbierz 15 ogórków",done:false,progress:0,target:15},
+    {id:4,title:"Zbuduj coś przy barze",done:false},
+    {id:5,title:"Przetrwaj 5 dni",done:false,progress:1,target:5},
+    {id:6,title:"Zrób 8 desek",done:false,progress:0,target:8},
+    {id:7,title:"Pogłaskaj kurczaka",done:false}
+];
 
 const BLOCKS = {
-    air:    { id: 0, solid: false },
-    grass:  { id: 1, color: 0x5d8a3c, solid: true, name: 'Trawa' },
-    dirt:   { id: 2, color: 0x8B5A2B, solid: true, name: 'Ziemia' },
-    stone:  { id: 3, color: 0x888888, solid: true, name: 'Kamień' },
-    wood:   { id: 4, color: 0x6B3F1A, solid: true, name: 'Drewno' },
-    leaves: { id: 5, color: 0x3a7a3a, solid: true, name: 'Liście' },
-    sand:   { id: 6, color: 0xd4c48a, solid: true, name: 'Piasek' },
-    water:  { id: 7, color: 0x3a7abf, solid: false, name: 'Woda' },
-    cucumber:{ id: 8, color: 0x6b8e23, solid: true, name: 'Ogórek' },
-    planks: { id: 9, color: 0xa67c52, solid: true, name: 'Deski' },
-    pink:   { id:10, color: 0xff69b4, solid: true, name: 'Różowy blok' }
+    air:{solid:false}, grass:{color:0x5d8a3c,solid:true}, dirt:{color:0x8B5A2B,solid:true},
+    stone:{color:0x888888,solid:true}, wood:{color:0x6B3F1A,solid:true}, leaves:{color:0x3a7a3a,solid:true},
+    sand:{color:0xd4c48a,solid:true}, water:{color:0x3a7abf,solid:false}, cucumber:{color:0x6b8e23,solid:true},
+    planks:{color:0xa67c52,solid:true}, pink:{color:0xff69b4,solid:true}, brick:{color:0xb35a3c,solid:true},
+    glass:{color:0xaaddff,solid:true}
 };
 
-function init() {
+const RECIPES = [
+    {id:'planks',name:'Deski ×4',needs:{wood:1},gives:{planks:4}},
+    {id:'brick',name:'Cegła ×2',needs:{stone:2},gives:{brick:2}},
+    {id:'glass',name:'Szkło ×2',needs:{sand:2},gives:{glass:2}},
+    {id:'pink',name:'Różowy blok',needs:{planks:1,cucumber:1},gives:{pink:2}}
+];
+
+const ICONS = {grass:'🟩',dirt:'🟫',stone:'⬜',wood:'🪵',cucumber:'🥒',planks:'🟧',pink:'🩷',leaves:'🍃',sand:'🟨',brick:'🧱',glass:'🔷'};
+
+const EVENTS = [
+    "Marcin i Piotrek urządzili małe przyjęcie przy barze!",
+    "Dziko rosnące ogórki pojawiły się na farmie!",
+    "Kurczaki są dziś bardzo aktywne...",
+    "Pogoda się zmienia – szykuj się na deszcz.",
+    "Piotrek prosi o więcej różowych bloków.",
+    "Marcin znalazł coś ciekawego w okolicy."
+];
+
+function init(){
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.FogExp2(0x87CEEB, 0.012);
+    scene.fog = new THREE.FogExp2(0x87CEEB, 0.0075);
 
-    camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 200);
-    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 300);
+    renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:"high-performance"});
     renderer.setSize(innerWidth, innerHeight);
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.45);
-    scene.add(ambient);
-    
-    sunLight = new THREE.DirectionalLight(0xfff5e0, 1.0);
-    sunLight.position.set(40, 60, 20);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.42));
+    sunLight = new THREE.DirectionalLight(0xfff5e0, 1.05);
+    sunLight.position.set(50,70,30);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(2048, 2048);
-    sunLight.shadow.camera.near = 10;
-    sunLight.shadow.camera.far = 150;
-    sunLight.shadow.camera.left = -60;
-    sunLight.shadow.camera.right = 60;
-    sunLight.shadow.camera.top = 60;
-    sunLight.shadow.camera.bottom = -60;
+    sunLight.shadow.mapSize.set(2048,2048);
+    sunLight.shadow.camera.near=10; sunLight.shadow.camera.far=180;
+    sunLight.shadow.camera.left=-80; sunLight.shadow.camera.right=80;
+    sunLight.shadow.camera.top=80; sunLight.shadow.camera.bottom=-80;
     scene.add(sunLight);
-
-    hemi = new THREE.HemisphereLight(0x87CEEB, 0x3a5a2a, 0.35);
-    scene.add(hemi);
-
-    raycaster = new THREE.Raycaster();
-    raycaster.far = 8;
+    scene.add(new THREE.HemisphereLight(0x87CEEB, 0x3a5a2a, 0.3));
 
     generateWorld();
+    createPlayerModel();
     createNPCs();
+    spawnAnimals();
     setupEvents();
     updateHotbar();
     updateQuests();
-    
-    setTimeout(() => {
-        document.getElementById('loading').style.display = 'none';
-        if (localStorage.getItem('ogorczak_save')) {
-            document.getElementById('btn-continue').style.display = 'inline-block';
-        }
-    }, 800);
+    buildCraftUI();
+
+    setTimeout(()=>{
+        document.getElementById('loading').style.display='none';
+        if(localStorage.getItem('ogorczak_sim_v4')) document.getElementById('btn-continue').style.display='inline-block';
+    },900);
 }
 
-function noise(x, z) {
-    const n = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
-    return n - Math.floor(n);
+function noise(x,z){const n=Math.sin(x*12.9898+z*78.233)*43758.5453;return n-Math.floor(n)}
+function smoothNoise(x,z){
+    const ix=Math.floor(x),iz=Math.floor(z),fx=x-ix,fz=z-iz;
+    const a=noise(ix,iz),b=noise(ix+1,iz),c=noise(ix,iz+1),d=noise(ix+1,iz+1);
+    const u=fx*fx*(3-2*fx),v=fz*fz*(3-2*fz);
+    return a*(1-u)*(1-v)+b*u*(1-v)+c*(1-u)*v+d*u*v;
 }
+function fbm(x,z){let v=0,a=1,f=0.028;for(let i=0;i<5;i++){v+=smoothNoise(x*f,z*f)*a;a*=0.5;f*=2.15}return v}
 
-function smoothNoise(x, z) {
-    const ix = Math.floor(x), iz = Math.floor(z);
-    const fx = x - ix, fz = z - iz;
-    const a = noise(ix, iz);
-    const b = noise(ix + 1, iz);
-    const c = noise(ix, iz + 1);
-    const d = noise(ix + 1, iz + 1);
-    const u = fx * fx * (3 - 2 * fx);
-    const v = fz * fz * (3 - 2 * fz);
-    return a*(1-u)*(1-v) + b*u*(1-v) + c*(1-u)*v + d*u*v;
-}
+function generateWorld(){
+    const progress=document.getElementById('loading-progress');
+    const text=document.getElementById('loading-text');
+    let count=0; const total=WORLD_SIZE*WORLD_SIZE;
 
-function fbm(x, z) {
-    let value = 0, amp = 1, freq = 0.04;
-    for (let i = 0; i < 4; i++) {
-        value += smoothNoise(x * freq, z * freq) * amp;
-        amp *= 0.5;
-        freq *= 2;
-    }
-    return value;
-}
+    for(let x=-WORLD_SIZE/2;x<WORLD_SIZE/2;x++){
+        for(let z=-WORLD_SIZE/2;z<WORLD_SIZE/2;z++){
+            const h=Math.floor(fbm(x,z)*10+5);
+            for(let y=0;y<=h;y++){
+                let type='stone';
+                if(y===h) type=h<5?'sand':'grass';
+                else if(y>h-3) type='dirt';
+                setBlock(x,y,z,type);
+            }
+            if(h<4) for(let y=h+1;y<=4;y++) setBlock(x,y,z,'water');
 
-function generateWorld() {
-    const progress = document.getElementById('loading-progress');
-    const text = document.getElementById('loading-text');
-    let count = 0;
-    const total = WORLD_SIZE * WORLD_SIZE;
+            if(h>6 && noise(x*2.4,z*2.4)>0.915 && Math.abs(x)>6 && Math.abs(z)>6){
+                const th=4+Math.floor(noise(x,z)*3);
+                for(let y=1;y<=th;y++) setBlock(x,h+y,z,'wood');
+                for(let lx=-2;lx<=2;lx++) for(let lz=-2;lz<=2;lz++) for(let ly=0;ly<=2;ly++)
+                    if(Math.abs(lx)+Math.abs(lz)+ly<4) setBlock(x+lx,h+th+ly-1,z+lz,'leaves');
+            }
+            if(h>6 && noise(x*5.8,z*5.8)>0.97) setBlock(x,h+1,z,'cucumber');
 
-    for (let x = -WORLD_SIZE/2; x < WORLD_SIZE/2; x++) {
-        for (let z = -WORLD_SIZE/2; z < WORLD_SIZE/2; z++) {
-            const h = Math.floor(fbm(x, z) * 8 + 6);
-            
-            for (let y = 0; y <= h; y++) {
-                let type = 'stone';
-                if (y === h) type = 'grass';
-                else if (y > h - 3) type = 'dirt';
-                else if (y < 3 && h < 5) type = 'sand';
-                setBlock(x, y, z, type);
-            }
-            
-            if (h < 4) {
-                for (let y = h + 1; y <= 4; y++) setBlock(x, y, z, 'water');
-            }
-            
-            if (h > 5 && noise(x*3, z*3) > 0.92 && Math.abs(x) > 4 && Math.abs(z) > 4) {
-                const treeH = 4 + Math.floor(noise(x, z) * 3);
-                for (let y = 1; y <= treeH; y++) setBlock(x, h + y, z, 'wood');
-                for (let lx = -2; lx <= 2; lx++) {
-                    for (let lz = -2; lz <= 2; lz++) {
-                        for (let ly = 0; ly <= 2; ly++) {
-                            if (Math.abs(lx) + Math.abs(lz) + ly < 4) {
-                                setBlock(x + lx, h + treeH + ly - 1, z + lz, 'leaves');
-                            }
-                        }
-                    }
-                }
-            }
-            
-            if (h > 5 && noise(x*7, z*7) > 0.97) {
-                setBlock(x, h + 1, z, 'cucumber');
-            }
-            
             count++;
-            if (count % 400 === 0) {
-                progress.style.width = (count / total * 100) + '%';
-                text.textContent = `Generowanie terenu... ${Math.floor(count/total*100)}%`;
-            }
+            if(count%800===0){progress.style.width=(count/total*100)+'%'; text.textContent=`Generowanie świata... ${Math.floor(count/total*100)}%`}
         }
     }
-    
     buildBar();
-    player.y = getHeight(0, 0) + 3;
-    rebuildMeshes();
-    progress.style.width = '100%';
-    text.textContent = 'Gotowe!';
-}
-
-function setBlock(x, y, z, type) {
-    const key = `${x},${y},${z}`;
-    if (type === 'air') delete world[key];
-    else world[key] = type;
-}
-
-function getBlock(x, y, z) {
-    return world[`${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`] || 'air';
-}
-
-function getHeight(x, z) {
-    for (let y = 30; y >= 0; y--) {
-        if (getBlock(x, y, z) !== 'air' && getBlock(x, y, z) !== 'water') return y;
+    for(let x=5;x<=14;x++) for(let z=4;z<=12;z++){
+        setBlock(x,getHeight(x,z)+1,z,'dirt');
+        if((x+z)%2===0) setBlock(x,getHeight(x,z)+2,z,'cucumber');
     }
-    return 0;
+    player.y=getHeight(0,0)+2;
+    rebuildMeshes();
+    progress.style.width='100%'; text.textContent='Gotowe!';
 }
 
-let blockMeshes = {};
-const materials = {};
+function setBlock(x,y,z,type){const k=`${x},${y},${z}`; if(type==='air') delete world[k]; else world[k]=type}
+function getBlock(x,y,z){return world[`${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`]||'air'}
+function getHeight(x,z){for(let y=40;y>=0;y--){const b=getBlock(x,y,z); if(b!=='air'&&b!=='water') return y} return 0}
 
-function getMaterial(type) {
-    if (!materials[type]) {
-        const b = BLOCKS[type];
-        materials[type] = new THREE.MeshLambertMaterial({ 
-            color: b.color,
-            transparent: type === 'water' || type === 'leaves',
-            opacity: type === 'water' ? 0.65 : (type === 'leaves' ? 0.9 : 1)
+let blockMeshes={}; const materials={};
+function getMaterial(type){
+    if(!materials[type]){
+        const b=BLOCKS[type];
+        materials[type]=new THREE.MeshLambertMaterial({
+            color:b.color, transparent:type==='water'||type==='leaves'||type==='glass',
+            opacity:type==='water'?0.6:(type==='leaves'?0.87:(type==='glass'?0.4:1))
         });
     }
     return materials[type];
 }
 
-function rebuildMeshes() {
-    Object.values(blockMeshes).forEach(m => scene.remove(m));
-    blockMeshes = {};
-    
-    const geos = {};
-    
-    for (const key in world) {
-        const type = world[key];
-        if (type === 'air') continue;
-        if (!geos[type]) geos[type] = [];
-        
-        const [x, y, z] = key.split(',').map(Number);
-        
-        const neighbors = [
-            getBlock(x+1,y,z), getBlock(x-1,y,z),
-            getBlock(x,y+1,z), getBlock(x,y-1,z),
-            getBlock(x,y,z+1), getBlock(x,y,z-1)
-        ];
-        if (neighbors.every(n => BLOCKS[n]?.solid)) continue;
-        
-        geos[type].push(x, y, z);
+function rebuildMeshes(){
+    Object.values(blockMeshes).forEach(m=>scene.remove(m));
+    blockMeshes={};
+    const geos={};
+    for(const key in world){
+        const type=world[key]; if(!geos[type]) geos[type]=[];
+        const [x,y,z]=key.split(',').map(Number);
+        const n=[getBlock(x+1,y,z),getBlock(x-1,y,z),getBlock(x,y+1,z),getBlock(x,y-1,z),getBlock(x,y,z+1),getBlock(x,y,z-1)];
+        if(n.every(b=>BLOCKS[b]?.solid)) continue;
+        geos[type].push(x,y,z);
     }
-    
-    for (const type in geos) {
-        const positions = geos[type];
-        const matrix = new THREE.Matrix4();
-        const geo = new THREE.BoxGeometry(0.98, 0.98, 0.98);
-        const mesh = new THREE.InstancedMesh(geo, getMaterial(type), positions.length / 3);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        
-        for (let i = 0; i < positions.length; i += 3) {
-            matrix.setPosition(positions[i], positions[i+1], positions[i+2]);
-            mesh.setMatrixAt(i / 3, matrix);
-        }
-        mesh.instanceMatrix.needsUpdate = true;
-        scene.add(mesh);
-        blockMeshes[type] = mesh;
+    for(const type in geos){
+        const pos=geos[type];
+        const matrix=new THREE.Matrix4();
+        const geo=new THREE.BoxGeometry(0.98,0.98,0.98);
+        const mesh=new THREE.InstancedMesh(geo,getMaterial(type),pos.length/3);
+        mesh.castShadow=true; mesh.receiveShadow=true;
+        for(let i=0;i<pos.length;i+=3){matrix.setPosition(pos[i],pos[i+1],pos[i+2]); mesh.setMatrixAt(i/3,matrix)}
+        mesh.instanceMatrix.needsUpdate=true;
+        scene.add(mesh); blockMeshes[type]=mesh;
     }
 }
 
-function createNPCs() {
-    const marcin = createCharacter(0x9b59b6, 0x4a3728, "Marcin");
-    marcin.position.set(-7, getHeight(-7, 1) + 1.1, 1);
-    marcin.rotation.y = Math.PI / 3;
-    scene.add(marcin);
-    npcs.push({ mesh: marcin, name: "Marcin", dialogs: [
-        "Hej Ogórczak! Fajnie, że wpadłeś.",
-        "Mój partner właśnie planuje rozbudowę baru.",
-        "Gdybyś mógł przynieść nam trochę różowych bloków, byłoby super.",
-        "Ogórki z Twojej farmy są najlepsze w okolicy.",
-        "Dbamy o siebie nawzajem. To ważne w tym świecie."
-    ], index: 0 });
-    
-    const partner = createCharacter(0x222222, 0x3e2723, "Partner Marcina");
-    partner.position.set(-5.5, getHeight(-5.5, 2.5) + 1.1, 2.5);
-    partner.rotation.y = -Math.PI / 4;
-    scene.add(partner);
-    npcs.push({ mesh: partner, name: "Partner Marcina", dialogs: [
-        "Cześć! Marcin ciągle o Tobie opowiada.",
-        "Ten różowy dach to moja sprawka. Pasuje do ogórków, nie?",
-        "Jak będziesz miał nadmiar drewna, to wpadaj. Zawsze się przyda.",
-        "Lubimy tu mieszkać. Spokojnie i blisko natury.",
-        "Dzięki, że pomagasz nam budować to miejsce."
-    ], index: 0 });
-}
+// ===== WIDOCZNY MODEL OGÓRCZAKA (trzecia osoba) =====
+function createPlayerModel(){
+    playerMesh = new THREE.Group();
 
-function createCharacter(shirtColor, hairColor, name) {
-    const g = new THREE.Group();
-    g.userData.name = name;
-    
-    const body = new THREE.Mesh(
-        new THREE.BoxGeometry(0.65, 1.0, 0.35),
-        new THREE.MeshLambertMaterial({ color: shirtColor })
-    );
-    body.position.y = 1.25;
+    // ciało
+    const bodyMat = new THREE.MeshLambertMaterial({color:0x6b8e23});
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.2, 1.1), bodyMat);
+    body.position.y = 1.3;
     body.castShadow = true;
-    g.add(body);
-    
-    const head = new THREE.Mesh(
-        new THREE.BoxGeometry(0.55, 0.55, 0.55),
-        new THREE.MeshLambertMaterial({ color: 0xf1c27d })
-    );
-    head.position.y = 2.05;
+    playerMesh.add(body);
+
+    // głowa
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.3, 1.3), bodyMat);
+    head.position.y = 2.85;
     head.castShadow = true;
-    g.add(head);
-    
-    const hair = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6, 0.28, 0.6),
-        new THREE.MeshLambertMaterial({ color: hairColor })
-    );
-    hair.position.y = 2.4;
-    g.add(hair);
-    
-    const legMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
-    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.65, 0.24), legMat);
-    legL.position.set(-0.16, 0.35, 0);
-    g.add(legL);
-    const legR = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.65, 0.24), legMat);
-    legR.position.set(0.16, 0.35, 0);
-    g.add(legR);
-    
-    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.65, 0.2), body.material);
-    armL.position.set(-0.45, 1.2, 0);
-    g.add(armL);
-    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.65, 0.2), body.material);
-    armR.position.set(0.45, 1.2, 0);
-    g.add(armR);
-    
+    playerMesh.add(head);
+
+    // oczy
+    const eyeMat = new THREE.MeshLambertMaterial({color:0x111111});
+    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.1), eyeMat);
+    eyeL.position.set(-0.32, 3.0, 0.65);
+    playerMesh.add(eyeL);
+    const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.1), eyeMat);
+    eyeR.position.set(0.32, 3.0, 0.65);
+    playerMesh.add(eyeR);
+
+    // dziób
+    const beak = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.45, 0.65), new THREE.MeshLambertMaterial({color:0xd4a017}));
+    beak.position.set(0, 2.65, 0.85);
+    playerMesh.add(beak);
+
+    // język
+    const tongue = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.55, 0.12), new THREE.MeshLambertMaterial({color:0xcc2222}));
+    tongue.position.set(0, 2.25, 1.05);
+    playerMesh.add(tongue);
+
+    // antenki
+    const antMat = new THREE.MeshLambertMaterial({color:0x90ee90});
+    const ant1 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.75, 0.14), antMat);
+    ant1.position.set(-0.28, 3.7, 0);
+    playerMesh.add(ant1);
+    const ant2 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.85, 0.14), antMat);
+    ant2.position.set(0.28, 3.75, 0);
+    playerMesh.add(ant2);
+
+    scene.add(playerMesh);
+}
+
+// ===== POSTACIE MARCINA I PIOTRKA =====
+function createMarcin(){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.BoxGeometry(0.68,1.05,0.38), new THREE.MeshLambertMaterial({color:0x9b59b6}));
+    body.position.y=1.28; body.castShadow=true; g.add(body);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.56,0.56,0.56), new THREE.MeshLambertMaterial({color:0xf1c27d}));
+    head.position.y=2.1; head.castShadow=true; g.add(head);
+    const hairMat=new THREE.MeshLambertMaterial({color:0x4a3728});
+    const hairBase=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.22,0.62), hairMat);
+    hairBase.position.y=2.42; g.add(hairBase);
+    for(let i=0;i<7;i++){
+        const spike=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.35+Math.random()*0.25,0.12), hairMat);
+        const ang=(i/7)*Math.PI*2;
+        spike.position.set(Math.cos(ang)*0.18, 2.55+Math.random()*0.1, Math.sin(ang)*0.18);
+        g.add(spike);
+    }
+    const hpMat=new THREE.MeshLambertMaterial({color:0x111111});
+    const hpL=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.22,0.14), hpMat); hpL.position.set(-0.42,1.55,0.15); g.add(hpL);
+    const hpR=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.22,0.14), hpMat); hpR.position.set(0.42,1.55,0.15); g.add(hpR);
+    const band=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.08,0.08), hpMat); band.position.set(0,1.7,0.1); g.add(band);
+    const legMat=new THREE.MeshLambertMaterial({color:0x2a2a2a});
+    const legL=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.68,0.24),legMat); legL.position.set(-0.17,0.34,0); g.add(legL);
+    const legR=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.68,0.24),legMat); legR.position.set(0.17,0.34,0); g.add(legR);
+    const armL=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.65,0.2),body.material); armL.position.set(-0.46,1.25,0); g.add(armL);
+    const armR=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.65,0.2),body.material); armR.position.set(0.46,1.25,0); g.add(armR);
     return g;
 }
 
-function buildBar() {
-    for (let x = -10; x <= -3; x++) {
-        for (let z = -1; z <= 5; z++) {
-            setBlock(x, getHeight(x, z) + 1, z, 'planks');
-        }
-    }
-    for (let x = -11; x <= -2; x++) {
-        for (let z = -2; z <= 6; z++) {
-            setBlock(x, getHeight(-7, 2) + 5, z, 'pink');
-        }
-    }
-    for (let y = 2; y <= 4; y++) {
-        setBlock(-10, getHeight(-10, -1) + y, -1, 'wood');
-        setBlock(-3, getHeight(-3, -1) + y, -1, 'wood');
-        setBlock(-10, getHeight(-10, 5) + y, 5, 'wood');
-        setBlock(-3, getHeight(-3, 5) + y, 5, 'wood');
+function createPiotrek(){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.BoxGeometry(0.65,1.0,0.36), new THREE.MeshLambertMaterial({color:0x1a1a1a}));
+    body.position.y=1.25; body.castShadow=true; g.add(body);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.54,0.54,0.54), new THREE.MeshLambertMaterial({color:0xf1c27d}));
+    head.position.y=2.05; head.castShadow=true; g.add(head);
+    const hairMat=new THREE.MeshLambertMaterial({color:0x3e2723});
+    const hairTop=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.28,0.6), hairMat); hairTop.position.y=2.38; g.add(hairTop);
+    const hairFront=new THREE.Mesh(new THREE.BoxGeometry(0.58,0.2,0.2), hairMat); hairFront.position.set(0,2.28,0.28); g.add(hairFront);
+    const hairSideL=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.35,0.4), hairMat); hairSideL.position.set(-0.32,2.15,0); g.add(hairSideL);
+    const hairSideR=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.35,0.4), hairMat); hairSideR.position.set(0.32,2.15,0); g.add(hairSideR);
+    const legMat=new THREE.MeshLambertMaterial({color:0x222});
+    const legL=new THREE.Mesh(new THREE.BoxGeometry(0.23,0.65,0.23),legMat); legL.position.set(-0.16,0.33,0); g.add(legL);
+    const legR=new THREE.Mesh(new THREE.BoxGeometry(0.23,0.65,0.23),legMat); legR.position.set(0.16,0.33,0); g.add(legR);
+    const armL=new THREE.Mesh(new THREE.BoxGeometry(0.19,0.62,0.19),body.material); armL.position.set(-0.44,1.2,0); g.add(armL);
+    const armR=new THREE.Mesh(new THREE.BoxGeometry(0.19,0.62,0.19),body.material); armR.position.set(0.44,1.2,0); g.add(armR);
+    return g;
+}
+
+function createNPCs(){
+    const marcin=createMarcin();
+    marcin.position.set(-7.5, getHeight(-7,1)+1.15, 1.2);
+    marcin.rotation.y=0.85;
+    scene.add(marcin);
+    npcs.push({
+        mesh:marcin, name:"Marcin", homeX:-7.5, homeZ:1.2,
+        dialogs:["Hej Ogórczak! Fajnie że wpadłeś.","Piotrek znowu kombinuje z dachem.","Jakbyś miał różowe bloki – bierzemy.","Twoje ogórki to najlepsza rzecz w okolicy.","Trzymamy się razem."],
+        index:0, walkTimer:0, targetX:-7.5, targetZ:1.2
+    });
+
+    const piotrek=createPiotrek();
+    piotrek.position.set(-5.3, getHeight(-5.5,2.5)+1.15, 2.8);
+    piotrek.rotation.y=-0.65;
+    scene.add(piotrek);
+    npcs.push({
+        mesh:piotrek, name:"Piotrek", homeX:-5.3, homeZ:2.8,
+        dialogs:["Cześć! Marcin ciągle o Tobie gada.","Ten różowy dach to moja sprawka.","Jak będziesz miał deski – wpadaj.","Lubimy tu mieszkać.","Dzięki że pomagasz budować."],
+        index:0, walkTimer:0, targetX:-5.3, targetZ:2.8
+    });
+}
+
+function spawnAnimals(){
+    for(let i=0;i<14;i++){
+        const ax=(Math.random()-0.5)*90;
+        const az=(Math.random()-0.5)*90;
+        const chicken=createChicken();
+        chicken.position.set(ax, getHeight(ax,az)+0.4, az);
+        scene.add(chicken);
+        animals.push({mesh:chicken, vx:0, vz:0, timer:Math.random()*4});
     }
 }
 
-function setupEvents() {
-    document.getElementById('btn-start').onclick = startGame;
-    document.getElementById('btn-continue').onclick = () => { loadGame(); startGame(); };
-    
-    document.addEventListener('keydown', e => {
-        keys[e.code] = true;
-        if (e.code === 'KeyE') talkToNPC();
-        if (e.code === 'KeyQ') toggleQuestLog();
-        if (e.code >= 'Digit1' && e.code <= 'Digit9') {
-            selectedSlot = parseInt(e.code.replace('Digit', '')) - 1;
-            updateHotbar();
-        }
-        if (e.code === 'Escape') {
+function createChicken(){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.3,0.5), new THREE.MeshLambertMaterial({color:0xf5f5f5}));
+    body.position.y=0.35; g.add(body);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.22,0.22), new THREE.MeshLambertMaterial({color:0xf5f5f5}));
+    head.position.set(0,0.55,0.28); g.add(head);
+    const beak=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.08,0.12), new THREE.MeshLambertMaterial({color:0xffaa00}));
+    beak.position.set(0,0.52,0.42); g.add(beak);
+    const comb=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.12,0.08), new THREE.MeshLambertMaterial({color:0xcc2222}));
+    comb.position.set(0,0.7,0.28); g.add(comb);
+    return g;
+}
+
+function buildBar(){
+    for(let x=-11;x<=-2;x++) for(let z=-2;z<=6;z++) setBlock(x,getHeight(x,z)+1,z,'planks');
+    for(let x=-12;x<=-1;x++) for(let z=-3;z<=7;z++) setBlock(x,getHeight(-7,2)+5,z,'pink');
+    for(let y=2;y<=4;y++){
+        setBlock(-11,getHeight(-11,-2)+y,-2,'wood');
+        setBlock(-2,getHeight(-2,-2)+y,-2,'wood');
+        setBlock(-11,getHeight(-11,6)+y,6,'wood');
+        setBlock(-2,getHeight(-2,6)+y,6,'wood');
+    }
+}
+
+function setupEvents(){
+    document.getElementById('btn-start').onclick=startGame;
+    document.getElementById('btn-continue').onclick=()=>{loadGame();startGame()};
+    document.getElementById('btn-mp').onclick=()=>{document.getElementById('menu').style.display='none'; openMP()};
+    document.getElementById('btn-close-craft').onclick=()=>{craftOpen=false;document.getElementById('craft-panel').style.display='none'};
+    document.getElementById('btn-close-mp').onclick=()=>{mpOpen=false;document.getElementById('mp-panel').style.display='none'; if(document.getElementById('ui').style.display==='none') document.getElementById('menu').style.display='flex'};
+    document.getElementById('btn-host').onclick=hostGame;
+    document.getElementById('btn-join').onclick=joinGame;
+
+    document.addEventListener('keydown',e=>{
+        keys[e.code]=true;
+        if(e.code==='KeyE') talkToNPC();
+        if(e.code==='KeyQ') toggleQuestLog();
+        if(e.code==='KeyC') toggleCraft();
+        if(e.code==='KeyM') openMP();
+        if(e.code>='Digit1'&&e.code<='Digit9'){selectedSlot=parseInt(e.code[5])-1;updateHotbar()}
+        if(e.code==='Escape'){
             document.exitPointerLock();
-            document.getElementById('menu').style.display = 'flex';
-            document.getElementById('ui').style.display = 'none';
+            document.getElementById('menu').style.display='flex';
+            document.getElementById('ui').style.display='none';
+            document.getElementById('craft-panel').style.display='none';
+            document.getElementById('mp-panel').style.display='none';
+            craftOpen=false; mpOpen=false;
         }
     });
-    document.addEventListener('keyup', e => keys[e.code] = false);
-    
-    document.addEventListener('click', () => {
-        if (document.getElementById('menu').style.display === 'none') {
-            document.body.requestPointerLock();
-        }
-    });
-    
-    document.addEventListener('pointerlockchange', () => {
-        isLocked = !!document.pointerLockElement;
-    });
-    
-    document.addEventListener('mousemove', e => {
-        if (!isLocked) return;
-        player.yaw -= e.movementX * 0.002;
+    document.addEventListener('keyup',e=>keys[e.code]=false);
+    document.addEventListener('click',()=>{if(document.getElementById('menu').style.display==='none'&&!craftOpen&&!mpOpen) document.body.requestPointerLock()});
+    document.addEventListener('pointerlockchange',()=>isLocked=!!document.pointerLockElement);
+    document.addEventListener('mousemove',e=>{
+        if(!isLocked||craftOpen||mpOpen) return;
+        player.yaw -= e.movementX * 0.0025;
         player.pitch -= e.movementY * 0.002;
-        player.pitch = Math.max(-1.4, Math.min(1.4, player.pitch));
+        player.pitch = Math.max(0.15, Math.min(1.1, player.pitch));
     });
-    
-    document.addEventListener('mousedown', e => {
-        if (!isLocked) return;
-        if (e.button === 0) breakBlock();
-        if (e.button === 2) placeBlock();
+    document.addEventListener('mousedown',e=>{
+        if(!isLocked||craftOpen||mpOpen) return;
+        if(e.button===0) breakBlock();
+        if(e.button===2) placeBlock();
     });
-    
-    document.addEventListener('contextmenu', e => e.preventDefault());
-    
-    window.addEventListener('resize', () => {
-        camera.aspect = innerWidth / innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(innerWidth, innerHeight);
-    });
+    document.addEventListener('contextmenu',e=>e.preventDefault());
+    window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 }
 
-function startGame() {
-    document.getElementById('menu').style.display = 'none';
-    document.getElementById('ui').style.display = 'block';
+function startGame(){
+    document.getElementById('menu').style.display='none';
+    document.getElementById('ui').style.display='block';
     document.body.requestPointerLock();
     animate();
 }
 
-function updatePlayer(dt) {
-    const speed = keys['ShiftLeft'] ? 3.2 : 7.5;
-    const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
-    const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
-    
-    let mx = 0, mz = 0;
-    if (keys['KeyW']) { mx += forward.x; mz += forward.z; }
-    if (keys['KeyS']) { mx -= forward.x; mz -= forward.z; }
-    if (keys['KeyA']) { mx -= right.x; mz -= right.z; }
-    if (keys['KeyD']) { mx += right.x; mz += right.z; }
-    
-    const len = Math.hypot(mx, mz);
-    if (len > 0) { mx /= len; mz /= len; }
-    
+function updatePlayer(dt){
+    const speed = keys['ShiftLeft'] ? 2.8 : 6.8;
+    let mx=0, mz=0;
+    const sin=Math.sin(player.yaw), cos=Math.cos(player.yaw);
+    if(keys['KeyW']){ mx -= sin; mz -= cos; }
+    if(keys['KeyS']){ mx += sin; mz += cos; }
+    if(keys['KeyA']){ mx -= cos; mz += sin; }
+    if(keys['KeyD']){ mx += cos; mz -= sin; }
+    const len=Math.hypot(mx,mz); if(len>0){mx/=len; mz/=len}
+
     player.vx = mx * speed;
     player.vz = mz * speed;
-    
-    player.vy -= 25 * dt;
-    
-    if (keys['Space'] && player.onGround) {
-        player.vy = 9.5;
-        player.onGround = false;
-    }
-    
-    const newX = player.x + player.vx * dt;
-    const newY = player.y + player.vy * dt;
-    const newZ = player.z + player.vz * dt;
-    
-    if (!isSolid(newX, player.y, player.z) && !isSolid(newX, player.y + 1.6, player.z)) player.x = newX;
-    if (!isSolid(player.x, player.y, newZ) && !isSolid(player.x, player.y + 1.6, newZ)) player.z = newZ;
-    
-    if (player.vy < 0 && isSolid(player.x, newY, player.z)) {
-        player.y = Math.floor(newY) + 1;
+    player.vy -= 26 * dt;
+    if(keys['Space'] && player.onGround){ player.vy = 9.5; player.onGround = false; }
+
+    const nx = player.x + player.vx * dt;
+    const ny = player.y + player.vy * dt;
+    const nz = player.z + player.vz * dt;
+
+    if(!isSolid(nx, player.y, player.z) && !isSolid(nx, player.y+1.8, player.z)) player.x = nx;
+    if(!isSolid(player.x, player.y, nz) && !isSolid(player.x, player.y+1.8, nz)) player.z = nz;
+
+    if(player.vy < 0 && isSolid(player.x, ny, player.z)){
+        player.y = Math.floor(ny) + 1;
         player.vy = 0;
         player.onGround = true;
-    } else if (player.vy > 0 && isSolid(player.x, newY + 1.7, player.z)) {
+    } else if(player.vy > 0 && isSolid(player.x, ny+2.0, player.z)){
         player.vy = 0;
     } else {
-        player.y = newY;
+        player.y = ny;
         player.onGround = false;
     }
-    
-    camera.position.set(player.x, player.y + 1.6, player.z);
-    camera.rotation.order = 'YXZ';
-    camera.rotation.y = player.yaw;
-    camera.rotation.x = player.pitch;
-    
+
+    // aktualizuj widoczny model
+    playerMesh.position.set(player.x, player.y, player.z);
+    playerMesh.rotation.y = player.yaw;
+
+    // kamera trzeciej osoby – za i nad postacią
+    const camDist = 7.5;
+    const camHeight = 4.5;
+    const camX = player.x + Math.sin(player.yaw) * camDist;
+    const camZ = player.z + Math.cos(player.yaw) * camDist;
+    const camY = player.y + camHeight + Math.sin(player.pitch) * 2;
+
+    camera.position.lerp(new THREE.Vector3(camX, camY, camZ), 0.15);
+    camera.lookAt(player.x, player.y + 2.2, player.z);
+
     document.getElementById('pos').textContent = `${player.x.toFixed(0)}, ${player.z.toFixed(0)}`;
+    document.getElementById('score').textContent = score;
+
+    if(conn && conn.open){
+        conn.send({type:'pos', x:player.x, y:player.y, z:player.z, yaw:player.yaw});
+    }
 }
 
-function isSolid(x, y, z) {
-    const b = getBlock(x, y, z);
-    return BLOCKS[b]?.solid;
-}
+function isSolid(x,y,z){return BLOCKS[getBlock(x,y,z)]?.solid}
 
-function getTargetBlock() {
-    let x = camera.position.x;
-    let y = camera.position.y;
-    let z = camera.position.z;
-    const dx = -Math.sin(player.yaw) * Math.cos(player.pitch);
-    const dy = -Math.sin(player.pitch);
-    const dz = -Math.cos(player.yaw) * Math.cos(player.pitch);
-    
-    for (let i = 0; i < 40; i++) {
-        x += dx * 0.2;
-        y += dy * 0.2;
-        z += dz * 0.2;
-        const bx = Math.floor(x), by = Math.floor(y), bz = Math.floor(z);
-        if (getBlock(bx, by, bz) !== 'air' && getBlock(bx, by, bz) !== 'water') {
-            return { x: bx, y: by, z: bz, px: Math.floor(x - dx*0.2), py: Math.floor(y - dy*0.2), pz: Math.floor(z - dz*0.2) };
+function getTargetBlock(){
+    // ray z kamery w kierunku patrzenia
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    let x = camera.position.x, y = camera.position.y, z = camera.position.z;
+    for(let i=0;i<50;i++){
+        x += dir.x * 0.2; y += dir.y * 0.2; z += dir.z * 0.2;
+        const bx=Math.floor(x), by=Math.floor(y), bz=Math.floor(z);
+        if(getBlock(bx,by,bz)!=='air' && getBlock(bx,by,bz)!=='water'){
+            return {x:bx,y:by,z:bz, px:Math.floor(x-dir.x*0.2), py:Math.floor(y-dir.y*0.2), pz:Math.floor(z-dir.z*0.2)};
         }
     }
     return null;
 }
 
-function breakBlock() {
-    const t = getTargetBlock();
-    if (!t) return;
-    const type = getBlock(t.x, t.y, t.z);
-    if (type === 'air') return;
-    
-    setBlock(t.x, t.y, t.z, 'air');
-    addToInventory(type, 1);
-    
-    if (type === 'cucumber') {
-        const q = quests.find(q => q.id === 2);
-        if (q && !q.done) {
-            q.progress = (q.progress || 0) + 1;
-            if (q.progress >= q.target) {
-                q.done = true;
-                showDialog("System", "Zadanie ukończone: Zdobądź 10 ogórków!");
-            }
-            updateQuests();
-        }
+function breakBlock(){
+    const t=getTargetBlock(); if(!t) return;
+    const type=getBlock(t.x,t.y,t.z); if(type==='air') return;
+    setBlock(t.x,t.y,t.z,'air'); addToInventory(type,1); score+=2;
+    if(type==='cucumber'){
+        const q=quests.find(q=>q.id===3);
+        if(q&&!q.done){q.progress=(q.progress||0)+1; if(q.progress>=q.target){q.done=true;showDialog("System","Zadanie ukończone: 15 ogórków!");score+=60} updateQuests()}
     }
-    
-    rebuildMeshes();
-    saveGame();
+    rebuildMeshes(); saveGame();
+    if(conn&&conn.open) conn.send({type:'break',x:t.x,y:t.y,z:t.z});
 }
 
-function placeBlock() {
-    const t = getTargetBlock();
-    if (!t) return;
-    const item = inventory[selectedSlot];
-    if (!item || item.count <= 0) return;
-    
-    const placeType = item.id;
-    if (!BLOCKS[placeType]) return;
-    
-    if (Math.abs(t.px - player.x) < 0.8 && Math.abs(t.pz - player.z) < 0.8 && t.py <= player.y + 1.7 && t.py >= player.y - 0.2) return;
-    
-    setBlock(t.px, t.py, t.pz, placeType);
-    item.count--;
-    if (item.count <= 0) inventory[selectedSlot] = null;
-    
-    if (t.px >= -11 && t.px <= -2 && t.pz >= -2 && t.pz <= 6) {
-        const q = quests.find(q => q.id === 3);
-        if (q && !q.done) {
-            q.done = true;
-            showDialog("System", "Zadanie ukończone: Zbuduj coś przy barze pary!");
-            updateQuests();
-        }
+function placeBlock(){
+    const t=getTargetBlock(); if(!t) return;
+    const item=inventory[selectedSlot]; if(!item||item.count<=0) return;
+    if(Math.abs(t.px-player.x)<1.0 && Math.abs(t.pz-player.z)<1.0 && t.py<=player.y+2.2 && t.py>=player.y-0.3) return;
+    setBlock(t.px,t.py,t.pz,item.id); item.count--; if(item.count<=0) inventory[selectedSlot]=null; score+=3;
+    if(t.px>=-12&&t.px<=-1&&t.pz>=-3&&t.pz<=7){
+        const q=quests.find(q=>q.id===4);
+        if(q&&!q.done){q.done=true;showDialog("System","Zadanie ukończone: budowa przy barze!");score+=50;updateQuests()}
     }
-    
-    updateHotbar();
-    rebuildMeshes();
-    saveGame();
+    updateHotbar(); rebuildMeshes(); saveGame();
+    if(conn&&conn.open) conn.send({type:'place',x:t.px,y:t.py,z:t.pz,block:item.id});
 }
 
-function addToInventory(type, count) {
-    for (let i = 0; i < 9; i++) {
-        if (inventory[i] && inventory[i].id === type) {
-            inventory[i].count += count;
-            updateHotbar();
+function addToInventory(type,count){
+    for(let i=0;i<9;i++) if(inventory[i]&&inventory[i].id===type){inventory[i].count+=count;updateHotbar();return}
+    for(let i=0;i<9;i++) if(!inventory[i]){inventory[i]={id:type,count};updateHotbar();return}
+}
+
+function hasItems(needs){for(const[id,amt] of Object.entries(needs)){let f=0;for(const it of inventory)if(it&&it.id===id)f+=it.count;if(f<amt)return false}return true}
+function removeItems(needs){for(const[id,amt] of Object.entries(needs)){let left=amt;for(let i=0;i<9&&left>0;i++)if(inventory[i]&&inventory[i].id===id){const take=Math.min(left,inventory[i].count);inventory[i].count-=take;left-=take;if(inventory[i].count<=0)inventory[i]=null}}}
+
+function craft(recipe){
+    if(!hasItems(recipe.needs)){showDialog("System","Za mało przedmiotów.");return}
+    removeItems(recipe.needs);
+    for(const[id,amt] of Object.entries(recipe.gives)) addToInventory(id,amt);
+    if(recipe.id==='planks'){
+        const q=quests.find(q=>q.id===6);
+        if(q&&!q.done){q.progress=(q.progress||0)+(recipe.gives.planks||0);if(q.progress>=q.target){q.done=true;showDialog("System","Zadanie ukończone: 8 desek!");score+=40}updateQuests()}
+    }
+    score+=8; updateHotbar(); buildCraftUI(); saveGame();
+}
+
+function buildCraftUI(){
+    document.getElementById('recipes').innerHTML=RECIPES.map(r=>{
+        const can=hasItems(r.needs);
+        const req=Object.entries(r.needs).map(([id,n])=>`${ICONS[id]||'?'}${n}`).join(' + ');
+        return `<div class="recipe" style="opacity:${can?1:0.4}" onclick="window.doCraft('${r.id}')"><span>${ICONS[r.id]||'⬛'} ${r.name}</span><span class="req">${req}</span></div>`;
+    }).join('');
+}
+window.doCraft=id=>{const r=RECIPES.find(x=>x.id===id);if(r)craft(r)};
+
+function toggleCraft(){craftOpen=!craftOpen;document.getElementById('craft-panel').style.display=craftOpen?'block':'none';if(craftOpen){document.exitPointerLock();buildCraftUI()}else document.body.requestPointerLock()}
+
+function talkToNPC(){
+    for(const npc of npcs){
+        const d=Math.hypot(npc.mesh.position.x-player.x,npc.mesh.position.z-player.z);
+        if(d<5){
+            showDialog(npc.name,npc.dialogs[npc.index%npc.dialogs.length]); npc.index++;
+            if(npc.name==="Marcin"){const q=quests.find(q=>q.id===1);if(q&&!q.done){q.done=true;updateQuests();setTimeout(()=>showDialog("System","Zadanie: rozmowa z Marcinem ✓"),2000);score+=30}}
+            if(npc.name==="Piotrek"){const q=quests.find(q=>q.id===2);if(q&&!q.done){q.done=true;updateQuests();setTimeout(()=>showDialog("System","Zadanie: rozmowa z Piotrkiem ✓"),2000);score+=30}}
             return;
         }
     }
-    for (let i = 0; i < 9; i++) {
-        if (!inventory[i]) {
-            inventory[i] = { id: type, count };
-            updateHotbar();
-            return;
-        }
-    }
-}
-
-function talkToNPC() {
-    for (const npc of npcs) {
-        const dist = Math.hypot(npc.mesh.position.x - player.x, npc.mesh.position.z - player.z);
-        if (dist < 4.5) {
-            const text = npc.dialogs[npc.index % npc.dialogs.length];
-            npc.index++;
-            showDialog(npc.name, text);
-            
-            if (npc.name === "Marcin") {
-                const q = quests.find(q => q.id === 1);
-                if (q && !q.done) {
-                    q.done = true;
-                    updateQuests();
-                    setTimeout(() => showDialog("System", "Zadanie ukończone: Porozmawiaj z Marcinem!"), 2500);
-                }
-            }
+    for(const a of animals){
+        const d=Math.hypot(a.mesh.position.x-player.x,a.mesh.position.z-player.z);
+        if(d<2.8){
+            showDialog("Kurczak","*głaska*  Bwak!");
+            const q=quests.find(q=>q.id===7); if(q&&!q.done){q.done=true;updateQuests();score+=25;showDialog("System","Pogłaskałeś kurczaka!")}
             return;
         }
     }
 }
 
-function showDialog(speaker, text) {
-    const el = document.getElementById('dialog');
-    el.querySelector('.speaker').textContent = speaker;
-    el.querySelector('.text').textContent = text;
+function showDialog(speaker,text){
+    const el=document.getElementById('dialog');
+    el.querySelector('.speaker').textContent=speaker;
+    el.querySelector('.text').textContent=text;
+    el.style.display='block'; dialogTimer=4.0;
+}
+
+function showEvent(text){
+    const el=document.getElementById('event-banner');
+    el.textContent = text;
     el.style.display = 'block';
-    dialogTimer = 4.5;
+    setTimeout(()=> el.style.display = 'none', 5000);
 }
 
-function updateHotbar() {
-    const slots = document.querySelectorAll('.slot');
-    const icons = { grass: '🟩', dirt: '🟫', stone: '⬜', wood: '🪵', cucumber: '🥒', planks: '🟧', pink: '🩷', leaves: '🍃', sand: '🟨' };
-    slots.forEach((slot, i) => {
-        slot.classList.toggle('active', i === selectedSlot);
-        const item = inventory[i];
-        if (item) {
-            slot.innerHTML = `${icons[item.id] || '⬛'}<span class="count">${item.count}</span>`;
-        } else {
-            slot.innerHTML = '';
+function updateHotbar(){
+    document.querySelectorAll('.slot').forEach((slot,i)=>{
+        slot.classList.toggle('active',i===selectedSlot);
+        const item=inventory[i];
+        slot.innerHTML=item?`${ICONS[item.id]||'⬛'}<span class="count">${item.count}</span>`:'';
+    });
+}
+function updateQuests(){
+    document.getElementById('quests').innerHTML=quests.map(q=>{
+        let extra=q.target?` (${q.progress||0}/${q.target})`:'';
+        return `<div class="quest ${q.done?'done':''}">${q.title}${extra}</div>`;
+    }).join('');
+}
+function toggleQuestLog(){const el=document.getElementById('quest-log');el.style.display=el.style.display==='none'?'block':'none'}
+
+function updateDayNight(dt){
+    dayTime+=dt/620;
+    if(dayTime>=1){
+        dayTime=0; dayCount++;
+        document.getElementById('day').textContent=dayCount;
+        const q=quests.find(q=>q.id===5);
+        if(q&&!q.done){q.progress=dayCount;if(dayCount>=5){q.done=true;showDialog("System","Przetrwałeś 5 dni!");score+=100}updateQuests()}
+        rainActive=Math.random()>0.55;
+        saveGame();
+    }
+    const t=dayTime;
+    let phase='Noc';
+    if(t>0.17&&t<0.83) phase=t<0.3?'Poranek':(t<0.7?'Dzień':'Wieczór');
+    document.getElementById('time').textContent=phase;
+    const sky=new THREE.Color();
+    const intens=Math.max(0.1,Math.sin(t*Math.PI)*1.12);
+    if(t<0.2) sky.setHSL(0.6,0.6,0.1+t*1.5);
+    else if(t<0.8) sky.setHSL(0.57,0.48,0.5);
+    else sky.setHSL(0.08,0.5,0.32-(t-0.8)*1.1);
+    if(rainActive) sky.offsetHSL(0,-0.1,-0.15);
+    scene.background=sky; scene.fog.color.copy(sky);
+    sunLight.intensity=intens*(rainActive?0.5:1);
+    sunLight.position.set(Math.cos(t*Math.PI*2)*60,Math.sin(t*Math.PI*2)*45,25);
+}
+
+// Multiplayer
+function openMP(){
+    mpOpen=true;
+    document.getElementById('mp-panel').style.display='block';
+    document.getElementById('mp-status').textContent='';
+    document.exitPointerLock();
+}
+
+function hostGame(){
+    document.getElementById('mp-status').textContent='Tworzenie pokoju...';
+    peer=new Peer();
+    peer.on('open',id=>{
+        document.getElementById('mp-status').innerHTML=`Twój kod: <b style="color:#8f8;font-size:16px">${id}</b><br>Podaj go Marcinowi`;
+        document.getElementById('players-online').style.display='block';
+    });
+    peer.on('connection',c=>{
+        conn=c; setupConnection();
+        document.getElementById('mp-status').textContent='Marcin dołączył!';
+        document.getElementById('player-count').textContent='2';
+        if(document.getElementById('ui').style.display==='none') startGame();
+    });
+    peer.on('error',e=>document.getElementById('mp-status').textContent='Błąd: '+e.type);
+}
+
+function joinGame(){
+    const code=document.getElementById('join-code').value.trim();
+    if(!code){document.getElementById('mp-status').textContent='Wpisz kod!';return}
+    document.getElementById('mp-status').textContent='Łączenie...';
+    peer=new Peer();
+    peer.on('open',()=>{
+        conn=peer.connect(code);
+        setupConnection();
+        conn.on('open',()=>{
+            document.getElementById('mp-status').textContent='Połączono!';
+            document.getElementById('players-online').style.display='block';
+            document.getElementById('player-count').textContent='2';
+            if(document.getElementById('ui').style.display==='none') startGame();
+        });
+    });
+    peer.on('error',e=>document.getElementById('mp-status').textContent='Błąd połączenia');
+}
+
+function setupConnection(){
+    conn.on('data',data=>{
+        if(data.type==='pos'){
+            if(!remotePlayers['remote']){
+                const mesh=createRemotePlayer();
+                scene.add(mesh);
+                remotePlayers['remote']={mesh};
+            }
+            const rp=remotePlayers['remote'];
+            rp.mesh.position.set(data.x, data.y, data.z);
+            rp.mesh.rotation.y = data.yaw || 0;
         }
+        if(data.type==='break'){setBlock(data.x,data.y,data.z,'air');rebuildMeshes()}
+        if(data.type==='place'){setBlock(data.x,data.y,data.z,data.block);rebuildMeshes()}
+    });
+    conn.on('close',()=>{
+        document.getElementById('player-count').textContent='1';
+        showDialog("System","Drugi gracz się rozłączył.");
     });
 }
 
-function updateQuests() {
-    const el = document.getElementById('quests');
-    el.innerHTML = quests.map(q => {
-        let extra = '';
-        if (q.target) extra = ` (${q.progress || 0}/${q.target})`;
-        return `<div class="quest ${q.done ? 'done' : ''}">${q.title}${extra}</div>`;
-    }).join('');
+function createRemotePlayer(){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.BoxGeometry(0.9,1.8,0.9),new THREE.MeshLambertMaterial({color:0x5a8e1a}));
+    body.position.y=1.1; body.castShadow=true; g.add(body);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(1.0,1.0,1.0),new THREE.MeshLambertMaterial({color:0x5a8e1a}));
+    head.position.y=2.3; g.add(head);
+    const beak=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.3,0.4),new THREE.MeshLambertMaterial({color:0xd4a017}));
+    beak.position.set(0,2.15,0.6); g.add(beak);
+    return g;
 }
 
-function toggleQuestLog() {
-    const el = document.getElementById('quest-log');
-    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+function saveGame(){
+    localStorage.setItem('ogorczak_sim_v4',JSON.stringify({
+        player:{x:player.x,y:player.y,z:player.z,health:player.health,hunger:player.hunger},
+        inventory,dayTime,dayCount,quests,score
+    }));
+}
+function loadGame(){
+    const raw=localStorage.getItem('ogorczak_sim_v4'); if(!raw) return;
+    try{
+        const d=JSON.parse(raw);
+        Object.assign(player,d.player); inventory=d.inventory; dayTime=d.dayTime; dayCount=d.dayCount; score=d.score||0;
+        if(d.quests) d.quests.forEach((sq,i)=>{if(quests[i]) Object.assign(quests[i],sq)});
+        updateHotbar(); updateQuests();
+        document.getElementById('day').textContent=dayCount;
+        document.getElementById('score').textContent=score;
+    }catch(e){}
 }
 
-function updateDayNight(dt) {
-    dayTime += dt / 600;
-    if (dayTime >= 1) {
-        dayTime = 0;
-        dayCount++;
-        document.getElementById('day').textContent = dayCount;
-        
-        const q = quests.find(q => q.id === 4);
-        if (q && !q.done) {
-            q.progress = dayCount;
-            if (dayCount >= 3) {
-                q.done = true;
-                showDialog("System", "Zadanie ukończone: Przetrwaj 3 dni!");
-            }
-            updateQuests();
-        }
-        saveGame();
-    }
-    
-    const t = dayTime;
-    let phase = 'Noc';
-    if (t > 0.2 && t < 0.8) phase = t < 0.35 ? 'Poranek' : (t < 0.65 ? 'Dzień' : 'Wieczór');
-    document.getElementById('time').textContent = phase;
-    
-    const sky = new THREE.Color();
-    const sunIntensity = Math.max(0.15, Math.sin(t * Math.PI) * 1.1);
-    
-    if (t < 0.25) sky.setHSL(0.6, 0.7, 0.15 + t * 1.5);
-    else if (t < 0.75) sky.setHSL(0.6, 0.55, 0.55);
-    else sky.setHSL(0.7, 0.6, 0.9 - (t - 0.75) * 2);
-    
-    scene.background = sky;
-    scene.fog.color.copy(sky);
-    sunLight.intensity = sunIntensity;
-    sunLight.position.set(Math.cos(t * Math.PI * 2) * 50, Math.sin(t * Math.PI * 2) * 40, 20);
-}
-
-function saveGame() {
-    const data = {
-        player: { x: player.x, y: player.y, z: player.z, health: player.health, hunger: player.hunger },
-        inventory, dayTime, dayCount, quests
-    };
-    localStorage.setItem('ogorczak_save', JSON.stringify(data));
-}
-
-function loadGame() {
-    const raw = localStorage.getItem('ogorczak_save');
-    if (!raw) return;
-    try {
-        const data = JSON.parse(raw);
-        Object.assign(player, data.player);
-        inventory = data.inventory;
-        dayTime = data.dayTime;
-        dayCount = data.dayCount;
-        quests = data.quests;
-        updateHotbar();
-        updateQuests();
-        document.getElementById('day').textContent = dayCount;
-    } catch(e) {}
-}
-
-function animate() {
+function animate(){
     requestAnimationFrame(animate);
-    const dt = Math.min(clock.getDelta(), 0.05);
-    
-    updatePlayer(dt);
+    const dt=Math.min(clock.getDelta(),0.05);
+
+    if(!craftOpen&&!mpOpen) updatePlayer(dt);
     updateDayNight(dt);
-    
-    if (dialogTimer > 0) {
-        dialogTimer -= dt;
-        if (dialogTimer <= 0) document.getElementById('dialog').style.display = 'none';
+
+    // dynamika NPC
+    npcs.forEach(npc=>{
+        npc.walkTimer-=dt;
+        if(npc.walkTimer<=0){
+            npc.targetX=npc.homeX+(Math.random()-0.5)*7;
+            npc.targetZ=npc.homeZ+(Math.random()-0.5)*7;
+            npc.walkTimer=2.5+Math.random()*4;
+        }
+        const dx=npc.targetX-npc.mesh.position.x;
+        const dz=npc.targetZ-npc.mesh.position.z;
+        const dist=Math.hypot(dx,dz);
+        if(dist>0.25){
+            npc.mesh.position.x+=dx/dist*1.5*dt;
+            npc.mesh.position.z+=dz/dist*1.5*dt;
+            npc.mesh.rotation.y=Math.atan2(dx,dz);
+        }
+        npc.mesh.position.y=getHeight(npc.mesh.position.x,npc.mesh.position.z)+1.15;
+    });
+
+    // zwierzęta
+    animals.forEach(a=>{
+        a.timer-=dt;
+        if(a.timer<=0){a.vx=(Math.random()-0.5)*2.2; a.vz=(Math.random()-0.5)*2.2; a.timer=1.8+Math.random()*3}
+        a.mesh.position.x+=a.vx*dt; a.mesh.position.z+=a.vz*dt;
+        a.mesh.position.y=getHeight(a.mesh.position.x,a.mesh.position.z)+0.4;
+        if(a.vx||a.vz) a.mesh.rotation.y=Math.atan2(a.vx,a.vz);
+    });
+
+    // losowe wydarzenia
+    eventTimer -= dt;
+    if(eventTimer <= 0){
+        eventTimer = 25 + Math.random()*40;
+        const ev = EVENTS[Math.floor(Math.random()*EVENTS.length)];
+        showEvent(ev);
+        // czasem dodaj ogórki na farmie
+        if(Math.random()>0.5){
+            for(let i=0;i<3;i++){
+                const fx = 5 + Math.floor(Math.random()*10);
+                const fz = 4 + Math.floor(Math.random()*9);
+                setBlock(fx, getHeight(fx,fz)+1, fz, 'cucumber');
+            }
+            rebuildMeshes();
+        }
     }
-    
-    player.hunger = Math.max(0, player.hunger - dt * 0.15);
-    document.getElementById('hunger-fill').style.width = player.hunger + '%';
-    document.getElementById('health-fill').style.width = player.health + '%';
-    
-    if (player.hunger <= 0) {
-        player.health = Math.max(0, player.health - dt * 2);
+
+    // lekkie kołysanie antenek Ogórczaka
+    if(playerMesh){
+        const t = performance.now() * 0.003;
+        playerMesh.children.forEach((c,i)=>{
+            if(i >= 6) c.rotation.z = Math.sin(t + i)*0.15;
+        });
     }
-    
-    renderer.render(scene, camera);
+
+    if(dialogTimer>0){dialogTimer-=dt;if(dialogTimer<=0) document.getElementById('dialog').style.display='none'}
+
+    player.hunger=Math.max(0,player.hunger-dt*0.11);
+    document.getElementById('hunger-fill').style.width=player.hunger+'%';
+    document.getElementById('health-fill').style.width=player.health+'%';
+    if(player.hunger<=0) player.health=Math.max(0,player.health-dt*1.6);
+
+    renderer.render(scene,camera);
 }
 
 init();
